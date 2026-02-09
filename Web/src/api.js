@@ -1,5 +1,5 @@
 // Central API utility for FarmUp backend calls
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 const AUTH_URL = `${API_BASE}/auth`;
 const MARKETPLACE_URL = `${API_BASE}/marketplace`;
 
