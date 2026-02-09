@@ -28,6 +28,6 @@ npm run build
 
 echo "=== Restarting Services ==="
 systemctl restart agrofarmup
-systemctl restart nginx
+systemctl reload nginx
 
-echo "=== Update Complete ==="
+echo "=== Update Complete (loan app unaffected) ==="

@@ -1,16 +1,24 @@
 #!/bin/bash
 # FarmUp Deployment Script for Ubuntu 22.04
 # Run as root or with sudo
+# NOTE: Safe to run alongside existing Laravel app at /var/www/loanms
 
 set -e
 
 echo "=== FarmUp Deployment Setup ==="
+echo "NOTE: This will NOT affect your existing loan app at /var/www/loanms"
 
-# Update system
-apt update && apt upgrade -y
+# Update package list only (no upgrade to avoid breaking existing PHP app)
+apt update
 
-# Install dependencies
-apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx git nodejs npm
+# Install Python dependencies (nginx should already be installed for loanms)
+apt install -y python3 python3-pip python3-venv certbot python3-certbot-nginx git
+
+# Install Node.js 18.x if not present
+if ! command -v node &> /dev/null; then
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+    apt install -y nodejs
+fi
 
 # Create app directory
 mkdir -p /var/www/agrofarmup
@@ -201,11 +209,13 @@ ln -sf /etc/nginx/sites-available/api.agrofarmup.com /etc/nginx/sites-enabled/
 ln -sf /etc/nginx/sites-available/agrofarmup.com /etc/nginx/sites-enabled/
 ln -sf /etc/nginx/sites-available/admin.agrofarmup.com /etc/nginx/sites-enabled/
 
-# Test and restart nginx
+# Test and reload nginx (reload is safer than restart for existing apps)
 nginx -t
-systemctl restart nginx
+systemctl reload nginx
 
 echo "=== Setup Complete ==="
+echo ""
+echo "Your existing loan app at /var/www/loanms is unaffected."
 echo ""
 echo "Next steps:"
 echo "1. Add DNS A records pointing to 149.255.63.77"
