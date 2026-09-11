@@ -1,15 +1,16 @@
 import './Marketplace.css';
 import { useState, useEffect } from 'react';
-import { fetchProduce, fetchSupplies, createOrder, getAuthToken } from '../api.js';
+import { fetchProduce, fetchSupplies, createCartCheckout, createTrustPaySession, getAuthToken } from '../api.js';
 
 export function Marketplace({ user, token, onNavigate }) {
   const [produce, setProduce] = useState([]);
   const [supplies, setSupplies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('produce');
-  const [orderModal, setOrderModal] = useState(null);
-  const [orderQuantity, setOrderQuantity] = useState(1);
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
   const [orderStatus, setOrderStatus] = useState({ loading: false, message: '', error: false });
+  const [createdCheckout, setCreatedCheckout] = useState(null);
 
   useEffect(() => {
     loadMarketData();
@@ -31,38 +32,47 @@ export function Marketplace({ user, token, onNavigate }) {
     }
   };
 
-  const handleOrder = async (item, type) => {
+  const addToCart = (item, type) => {
     if (!user) {
       onNavigate('login');
       return;
     }
-    setOrderModal({ item, type });
-    setOrderQuantity(1);
-    setOrderStatus({ loading: false, message: '', error: false });
+    if (type !== 'produce') return;
+    setCart(current => {
+      const existing = current.find(cartItem => cartItem.id === item.id);
+      if (existing) return current.map(cartItem => cartItem.id === item.id ? { ...cartItem, quantity: cartItem.quantity + 1 } : cartItem);
+      return [...current, { ...item, quantity: 1 }];
+    });
   };
 
-  const submitOrder = async () => {
+  const submitCheckout = async () => {
+    if (!cart.length) return;
     setOrderStatus({ loading: true, message: '', error: false });
     try {
-      const authToken = token || getAuthToken();
-      await createOrder({
-        item_id: orderModal.item.id,
-        item_type: orderModal.type,
-        quantity: orderQuantity,
-        total_price: orderModal.type === 'produce' 
-          ? orderModal.item.price_per_unit * orderQuantity
-          : orderModal.item.price * orderQuantity
-      }, authToken);
-      setOrderStatus({ loading: false, message: 'Order placed successfully!', error: false });
-      setTimeout(() => setOrderModal(null), 2000);
+      const checkout = await createCartCheckout(cart, token || getAuthToken());
+      setCreatedCheckout(checkout);
+      setOrderStatus({ loading: false, message: 'Checkout created. Continue to secure payment.', error: false });
     } catch (err) {
       setOrderStatus({ loading: false, message: err.message || 'Failed to place order', error: true });
+    }
+  };
+
+  const payWithTrustPay = async () => {
+    setOrderStatus({ loading: true, message: '', error: false });
+    try {
+      const session = await createTrustPaySession(createdCheckout.id, token || getAuthToken());
+      if (!session.checkout_url) throw new Error('TrustPay did not return a checkout URL');
+      window.location.assign(session.checkout_url);
+    } catch (err) {
+      setOrderStatus({ loading: false, message: err.message || 'Unable to start secure payment', error: true });
     }
   };
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', maximumFractionDigits: 0 }).format(price);
   };
+
+  const cartTotal = cart.reduce((total, item) => total + Number(item.price_per_unit) * item.quantity, 0);
 
   return (
     <div className="marketplace">
@@ -133,9 +143,9 @@ export function Marketplace({ user, token, onNavigate }) {
                     </p>
                     <button 
                       className="market-btn"
-                      onClick={() => handleOrder(item, 'produce')}
+                      onClick={() => addToCart(item, 'produce')}
                     >
-                      {user ? '🛒 Order Now' : '🛒 Login to Order'}
+                      {user ? '🛒 Add to Cart' : '🛒 Login to Buy'}
                     </button>
                   </div>
                 </div>
@@ -169,9 +179,9 @@ export function Marketplace({ user, token, onNavigate }) {
                     </p>
                     <button 
                       className="market-btn"
-                      onClick={() => handleOrder(item, 'supply')}
+                      onClick={() => addToCart(item, 'supply')}
                     >
-                      {user ? '🛒 Buy Now' : '🛒 Login to Buy'}
+                      {user ? '🛒 Add to Cart' : '🛒 Login to Buy'}
                     </button>
                   </div>
                 </div>
@@ -181,48 +191,27 @@ export function Marketplace({ user, token, onNavigate }) {
         </div>
       )}
 
-      {/* Order Modal */}
-      {orderModal && (
-        <div className="modal-overlay" onClick={() => setOrderModal(null)}>
+      {user && (
+        <button className="cart-fab" onClick={() => { setCartOpen(true); setCreatedCheckout(null); setOrderStatus({ loading: false, message: '', error: false }); }}>
+          🛒 Cart ({cart.reduce((count, item) => count + item.quantity, 0)})
+        </button>
+      )}
+
+      {/* Cart checkout */}
+      {cartOpen && (
+        <div className="modal-overlay" onClick={() => setCartOpen(false)}>
           <div className="order-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setOrderModal(null)}>×</button>
-            <h2>Place Order</h2>
-            <div className="order-item-preview">
-              <img src={orderModal.item.image} alt={orderModal.item.name} />
-              <div>
-                <h3>{orderModal.item.name}</h3>
-                <p className="order-price">
-                  {orderModal.type === 'produce' 
-                    ? `${formatPrice(orderModal.item.price_per_unit)} / ${orderModal.item.unit}`
-                    : formatPrice(orderModal.item.price)
-                  }
-                </p>
+            <button className="modal-close" onClick={() => setCartOpen(false)}>×</button>
+            <h2>Your Cart</h2>
+            {cart.map(item => (
+              <div className="cart-line" key={item.id}>
+                <span>{item.name} × {item.quantity}</span>
+                <strong>{formatPrice(Number(item.price_per_unit) * item.quantity)}</strong>
               </div>
-            </div>
-            
-            <div className="order-quantity">
-              <label>Quantity:</label>
-              <div className="quantity-controls">
-                <button onClick={() => setOrderQuantity(Math.max(1, orderQuantity - 1))}>-</button>
-                <input 
-                  type="number" 
-                  value={orderQuantity} 
-                  onChange={(e) => setOrderQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                  min="1"
-                />
-                <button onClick={() => setOrderQuantity(orderQuantity + 1)}>+</button>
-              </div>
-            </div>
-            
+            ))}
             <div className="order-total">
               <span>Total:</span>
-              <strong>
-                {formatPrice(
-                  orderModal.type === 'produce'
-                    ? orderModal.item.price_per_unit * orderQuantity
-                    : orderModal.item.price * orderQuantity
-                )}
-              </strong>
+              <strong>{formatPrice(cartTotal)}</strong>
             </div>
             
             {orderStatus.message && (
@@ -233,11 +222,20 @@ export function Marketplace({ user, token, onNavigate }) {
             
             <button 
               className="submit-order-btn"
-              onClick={submitOrder}
-              disabled={orderStatus.loading || orderStatus.message.includes('success')}
+              onClick={submitCheckout}
+              disabled={orderStatus.loading || Boolean(createdCheckout) || !cart.length}
             >
-              {orderStatus.loading ? 'Processing...' : 'Confirm Order'}
+              {orderStatus.loading ? 'Processing...' : 'Create Checkout'}
             </button>
+            {createdCheckout && (
+              <button
+                className="trustpay-btn"
+                onClick={payWithTrustPay}
+                disabled={orderStatus.loading}
+              >
+                {orderStatus.loading ? 'Connecting to TrustPay...' : 'Pay securely with TrustPay'}
+              </button>
+            )}
           </div>
         </div>
       )}

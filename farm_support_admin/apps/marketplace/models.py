@@ -24,6 +24,24 @@ class ProductCategory(models.Model):
     def __str__(self):
         return self.name
 
+
+# Proxy models for better admin organization
+class ProduceCategoryProxy(ProductCategory):
+    """Proxy model for Farm Produce categories"""
+    class Meta:
+        proxy = True
+        verbose_name = "Farm Produce Category"
+        verbose_name_plural = "Farm Produce Categories"
+
+
+class SupplyCategoryProxy(ProductCategory):
+    """Proxy model for Supply categories"""
+    class Meta:
+        proxy = True
+        verbose_name = "Supply Category"
+        verbose_name_plural = "Supply Categories"
+
+
 class Produce(models.Model):
     farmer = models.ForeignKey(Farmer, on_delete=models.CASCADE, related_name='produces', null=True, blank=True)
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='seller_produces', null=True, blank=True, limit_choices_to={'role': 'seller'})
@@ -34,6 +52,8 @@ class Produce(models.Model):
     unit = models.CharField(max_length=20, default='kg')
     quantity_available = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.ImageField(upload_to='produce_images/', blank=True, null=True)
+    image2 = models.ImageField(upload_to='produce_images/', blank=True, null=True)
+    image3 = models.ImageField(upload_to='produce_images/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
@@ -55,10 +75,25 @@ class Order(models.Model):
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
     status = models.CharField(max_length=20, default='pending')
+    trustpay_session_id = models.CharField(max_length=100, blank=True, null=True, unique=True)
+    payment_status = models.CharField(max_length=30, default='unpaid')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Order #{self.id} by {self.customer}"
+
+
+class Checkout(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='checkouts')
+    items = models.JSONField()
+    total_price = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=20, default='pending')
+    trustpay_session_id = models.CharField(max_length=100, blank=True, null=True, unique=True)
+    payment_status = models.CharField(max_length=30, default='unpaid')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Checkout #{self.id} by {self.customer}"
 
 class SupplyProduct(models.Model):
     name = models.CharField(max_length=100)
@@ -68,6 +103,8 @@ class SupplyProduct(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField()
     image = models.ImageField(upload_to='supply_images/', blank=True, null=True)
+    image2 = models.ImageField(upload_to='supply_images/', blank=True, null=True)
+    image3 = models.ImageField(upload_to='supply_images/', blank=True, null=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

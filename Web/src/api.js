@@ -41,7 +41,7 @@ export async function updateUserProfile(token, profileData) {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Token ${token}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify(profileData)
   });
@@ -129,12 +129,48 @@ export async function createOrder(orderData, token) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Token ${token}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify(orderData)
   });
   const result = await res.json();
-  if (!res.ok) throw new Error(result.error || 'Failed to create order');
+  if (!res.ok) {
+    const detail = result.detail || result.produce?.[0] || result.quantity?.[0] || result.error;
+    throw new Error(detail || 'Failed to create order');
+  }
+  return result;
+}
+
+export async function createCartCheckout(items, token) {
+  const res = await fetch(`${API_BASE}/payments/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ items: items.map(item => ({ produce_id: item.id, quantity: item.quantity })) })
+  });
+  const result = await res.json();
+  if (!res.ok) {
+    const detail = result.error || result.detail || result.message;
+    const code = result.code ? ` (${result.code})` : '';
+    throw new Error(`${detail || `Checkout request failed (${res.status})`}${code}`);
+  }
+  return result;
+}
+
+export async function createTrustPaySession(checkoutId, token) {
+  const res = await fetch(`${API_BASE}/payments/trustpay/create-session`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ checkout_id: checkoutId })
+  });
+  const result = await res.json();
+  if (!res.ok) {
+    const detail = result.error || result.detail || result.message;
+    const code = result.code ? ` (${result.code})` : '';
+    throw new Error(`${detail || 'Unable to start secure payment'}${code}`);
+  }
   return result;
 }
 

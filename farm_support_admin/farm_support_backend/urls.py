@@ -19,6 +19,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
+from apps.marketplace.payment_views import CartCheckoutView, TrustPayCreateSessionView, TrustPayStatusView, TrustPayWebhookView
 
 def home_view(request):
     return JsonResponse({
@@ -44,6 +45,10 @@ urlpatterns = [
     path('api/loans/', include('apps.loans.urls')),
     path('api/animals/', include('apps.animals.urls')),
     path('api/marketplace/', include('apps.marketplace.urls')),
+    path('api/payments/trustpay/create-session', TrustPayCreateSessionView.as_view(), name='trustpay-create-session'),
+    path('api/payments/checkout', CartCheckoutView.as_view(), name='cart-checkout'),
+    path('api/payments/trustpay/status/<int:checkout_id>', TrustPayStatusView.as_view(), name='trustpay-status'),
+    path('api/payments/trustpay/webhook', TrustPayWebhookView.as_view(), name='trustpay-webhook'),
     path('api/land/', include('apps.lands.urls')),
     path('api/activities/', include('apps.activities.urls')),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

@@ -15,13 +15,14 @@ export function LoginPage({ onLogin, onNavigate }) {
     
     try {
       const response = await login(username, password);
+      const authToken = response.tokens?.access || response.token;
       
       // Save auth data
-      saveAuthToken(response.token);
+      saveAuthToken(authToken);
       saveUser(response.user);
       
       // Notify parent
-      onLogin(response.user, response.token);
+      onLogin(response.user, authToken);
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
     } finally {

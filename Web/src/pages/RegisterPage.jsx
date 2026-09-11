@@ -57,10 +57,11 @@ export function RegisterPage({ onRegister, onNavigate }) {
       const response = await register(registrationData);
       
       // Save auth data
-      if (response.token) {
-        saveAuthToken(response.token);
+      const authToken = response.tokens?.access || response.token;
+      if (authToken) {
+        saveAuthToken(authToken);
         saveUser(response.user);
-        onRegister(response.user, response.token);
+        onRegister(response.user, authToken);
       } else {
         // If no token returned, redirect to login
         onNavigate('login');

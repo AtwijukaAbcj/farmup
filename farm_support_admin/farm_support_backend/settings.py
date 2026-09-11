@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +28,7 @@ SECRET_KEY = 'django-insecure-farm-support-secret-key-change-in-production'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '192.168.1.31', '*']
+ALLOWED_HOSTS = ['localhost', '192.168.1.37', '0.0.0.0', '192.168.1.31', '*']
 
 
 # Application definition
@@ -208,26 +209,50 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://192.168.1.37:3000",
     "http://localhost:8080",
-    "http://127.0.0.1:8080",
+    "http://192.168.1.37:8080",
     "http://localhost:8081",
-    "http://127.0.0.1:8081",
+    "http://192.168.1.37:8081",
     "http://localhost:8082",
-    "http://127.0.0.1:8082", 
+    "http://192.168.1.37:8082", 
     "http://localhost:8083",  # Current Expo port
-    "http://127.0.0.1:8083",
+    "http://192.168.1.37:8083",
     "http://localhost:19006",  # Expo web default port
-    "http://127.0.0.1:19006",
+    "http://192.168.1.37:19006",
+    # Production domains
+    "https://agrofarmup.com",
+    "https://www.agrofarmup.com",
+    "https://api.agrofarmup.com",
+    "http://agrofarmup.com",
+    "http://www.agrofarmup.com",
 ]
 
 # CSRF Configuration - Exempt API endpoints
 CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://localhost:8083",
-    "http://127.0.0.1:8083",
+    "http://192.168.1.37:8083",
     "http://192.168.1.31:8000",
+    # Production domains
+    "https://agrofarmup.com",
+    "https://www.agrofarmup.com",
+    "https://api.agrofarmup.com",
 ]
+
+# TrustPay credentials and URLs are server-side configuration only.
+TRUSTPAY_API_KEY = config('TRUSTPAY_API_KEY', default='')
+TRUSTPAY_BASE_URL = config(
+    'TRUSTPAY_BASE_URL',
+    default=config('TRUSTPAY_API_BASE_URL', default=''),
+).rstrip('/')
+# Backwards-compatible alias for existing code and deployments.
+TRUSTPAY_API_BASE_URL = TRUSTPAY_BASE_URL
+AGRO_PUBLIC_URL = config('AGRO_PUBLIC_URL', default='http://localhost:5173').rstrip('/')
 
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
